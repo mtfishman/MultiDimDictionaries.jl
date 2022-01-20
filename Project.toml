@@ -1,0 +1,13 @@
+name = "MultiDimDictionaries"
+uuid = "87ff4268-a46e-478f-b30a-76b83dd64e3c"
+authors = ["Matthew Fishman <mfishman@flatironinstitute.org> and contributors"]
+version = "0.0.1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+julia = "1.6.5"
+
+[targets]
+test = ["Test"]
