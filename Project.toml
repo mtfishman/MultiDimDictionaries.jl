@@ -3,11 +3,17 @@ uuid = "87ff4268-a46e-478f-b30a-76b83dd64e3c"
 authors = ["Matthew Fishman <mfishman@flatironinstitute.org> and contributors"]
 version = "0.0.1"
 
-[extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+[deps]
+Dictionaries = "85a47980-9c8c-11e8-2b9f-f7ca1fa99fb4"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [compat]
-julia = "1.6.5"
+Dictionaries = "0.3.19"
+Reexport = "1.2.2"
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test"]
