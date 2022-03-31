@@ -72,6 +72,18 @@ dv = [d1; d2]
 
 dh = hcat(d1, d2)
 
+@show dh[1, 1] == 1
+@show dh[2, 1] == 2
+@show dh[1, 2] == 3
+@show dh[2, 2] == 4
+
+dh = hcat(d1, d2; new_dim_keys=("X", "Y"))
+
+@show dh[1, "X"] == 1
+@show dh[2, "X"] == 2
+@show dh[1, "Y"] == 3
+@show dh[2, "Y"] == 4
+
 ## d1 = MultiDimDictionary(Float64, (2, 2, 2))
 ## d1[1, 1, 1] = 111
 ## d1[2, 2, 1] = 221
