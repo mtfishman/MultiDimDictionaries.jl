@@ -49,14 +49,14 @@ d12 = merge(d, d2)
 @show haskey(d12, CartesianKey(1, 2))
 @show haskey(d12, CartesianKey(3, 2))
 
-d1 = MultiDimDictionary(Float64, (2,))
+d1 = MultiDimDictionary()
 d1[1] = 1
 d1[2] = 2
 
 @show d1[1] == 1
 @show d1[2] == 2
 
-d2 = MultiDimDictionary(Float64, (2,))
+d2 = MultiDimDictionary()
 d2[1] = 3
 d2[2] = 4
 
@@ -84,17 +84,23 @@ dh = hcat(d1, d2; new_dim_keys=("X", "Y"))
 @show dh[1, "Y"] == 3
 @show dh[2, "Y"] == 4
 
-## d1 = MultiDimDictionary(Float64, (2, 2, 2))
-## d1[1, 1, 1] = 111
-## d1[2, 2, 1] = 221
-## 
-## d2 = MultiDimDictionary(Float64, (2, 2, 2))
-## d2[1, 1, 1] = 311
-## d2[2, 2, 1] = 421
-## 
-## d = [d1; d2]
-## 
-## @show d[1, 1, 1] == 111
-## @show d[2, 2, 1] == 221
-## @show d[3, 1, 1] == 311
-## @show d[4, 2, 1] == 421
+dh_X = dh[:, "X"]
+
+@show dh_X[1, "X"] == 1
+@show dh_X[2, "X"] == 2
+@show !isassigned(dh_X, 1, "Y")
+@show !isassigned(dh_X, 2, "Y")
+
+dh_Y = dh[:, "Y"]
+
+@show !isassigned(dh_Y, 1, "X")
+@show !isassigned(dh_Y, 2, "X")
+@show dh_Y[1, "Y"] == 3
+@show dh_Y[2, "Y"] == 4
+
+dh_Z = dh[:, "Z"]
+
+@show !isassigned(dh_Z, 1, "X")
+@show !isassigned(dh_Z, 2, "X")
+@show !isassigned(dh_Z, 1, "Y")
+@show !isassigned(dh_Z, 2, "Y")
