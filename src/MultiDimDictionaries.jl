@@ -111,7 +111,7 @@ module MultiDimDictionaries
     return getindex(dictionary.dictionary, CartesianKey(i...))
   end
 
-  function getindex(dictionary::MultiDimDictionary{I,T}, i...)::T where {I,T}
+  function getindex(dictionary::MultiDimDictionary{I,T}, i...) where {I,T}
     return getindex(index_type(i...), dictionary, i...)
   end
 
@@ -183,7 +183,7 @@ module MultiDimDictionaries
     return true
   end
 
-  function getindex(::SliceIndex, dictionary::MultiDimDictionary{I,T}, i...)::T where {I,T}
+  function getindex(::SliceIndex, dictionary::MultiDimDictionary{I,T}, i...) where {I,T}
     indices = Indices{I}()
     for key in keys(dictionary)
       if index_in_slice(key, (i...,))
