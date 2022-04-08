@@ -3,7 +3,7 @@ module MultiDimDictionaries
   @reexport using Dictionaries
 
   import Base: convert, keys, getindex, get, isassigned, setindex!, insert!, delete!, length, show, Tuple, eltype, ==, similar, vcat, hcat, hvncat
-  import Dictionaries: issettable, isinsertable, gettokenvalue, merge
+  import Dictionaries: issettable, isinsertable, gettokenvalue, merge, haskey
 
   include("linearindex.jl")
 
@@ -113,6 +113,9 @@ module MultiDimDictionaries
   isassigned(dictionary::MultiDimDictionary, index::Tuple) = isassigned(dictionary.dictionary, index)
   isassigned(dictionary::MultiDimDictionary, i...) = isassigned(dictionary, (i...,))
 
+  haskey(dictionary::MultiDimDictionary, index::Tuple) = haskey(dictionary.dictionary, index)
+  haskey(dictionary::MultiDimDictionary, i...) = haskey(dictionary, (i...,))
+
   issetable(dictionary::MultiDimDictionary) = issetable(dictionary.dictionary)
 
   function setindex!(dictionary::MultiDimDictionary{I,T}, value::T, index::I) where {I<:Tuple,T}
@@ -184,9 +187,11 @@ module MultiDimDictionaries
   end
 
   #
-  # Concatenation
+  # Merging/disjoint unions
   #
 
+  # Disjoint union without any relabelling (assumes the dictionaries already have
+  # unique keys).
   function merge(dictionary1::MultiDimDictionary{I1,T1}, dictionary2::MultiDimDictionary{I2,T2}) where {I1,T1,I2,T2}
     # TODO: Use `promote(dictionary1, dictionary2)` instead.
     I = promote_type(I1, I2)
@@ -203,28 +208,44 @@ module MultiDimDictionaries
   _add(n1, n2::Integer) = n2
   _add(n1::Integer, n2) = n1
 
-  # Either shift the key in dimension `dim` by `fs[dim]`, or if
-  # `dim > length(key)` then extend the key to length `dim` by padding
-  # with 1s and insert `dim_key` at dimension `dim`.
-  #
-  # For example:
-  #
-  # f = x -> x + 3
-  #
-  # _shift_key(Tuple(2, 2, 2), (f, f, f), 2) -> Tuple(2, 5, 2)
-  #
-  # _shift_key(Tuple(2, 2, 2), (f, f, f), 3) -> Tuple(2, 2, 5)
-  #
-  # _shift_key(Tuple(2, 2, 2), (f, f, f), 4) -> Tuple(2, 2, 2, 1)
-  #
-  # _shift_key(Tuple(2, 2, 2), (f, f, f), 4, "X") -> Tuple(2, 2, 2, "X")
-  function _shift_key(key::Tuple, dims, dim::Int, dim_key=1)
-    if dim > length(key)
+  """
+      _shift_key(key::Tuple, dims::Tuple, dim::Int, dim_key=1)
+  
+  Either shift the key in dimension `dim` by `dims[d]`, or if
+  `dim > length(key)` then extend the key to length `dim` by padding
+  with 1s and insert `dim_key` at dimension `dim`.
+  
+  For example:
+  
+  f = x -> x + 3
+  
+  _shift_key(Tuple(2, 2, 2), [3, 3, 3], 2) -> Tuple(2, 5, 2)
+  
+  _shift_key(Tuple(2, 2, 2), [3, 3, 3], 3) -> Tuple(2, 2, 5)
+  
+  _shift_key(Tuple(2, 2, 2), [3, 3, 3], 4) -> Tuple(2, 2, 2, 1)
+  
+  _shift_key(Tuple(2, 2, 2), [3, 3, 3], 4, "X") -> Tuple(2, 2, 2, "X")
+  
+  _shift_key(Tuple(2, 2, 2), [3, 3, 3], 0) -> Tuple(1, 2, 5, 2)
+
+  _shift_key(Tuple(2, 2, 2), [3, 3, 3], 0, "X") -> Tuple("X", 2, 5, 2)
+
+  This is an "injection": https://en.wikipedia.org/wiki/Disjoint_union
+  """
+  function _shift_key(key::Tuple, dims::Vector{Int}, dim::Int, dim_key=1)
+    if dim < 0
+      error("Not implemented dim=$dim")
+    elseif dim == 0
+      return (dim_key, key...)
+    elseif dim > length(key)
       return ntuple(j -> j == dim ? dim_key : (j > length(key) ? 1 : key[j]), dim)
     end
     return ntuple(j -> j == dim ? _add(dims[dim], key[dim]) : key[j], length(key))
   end
 
+  # This is a "disjoint union": https://en.wikipedia.org/wiki/Disjoint_union
+  # "⊔" can be typed by \sqcup<tab>
   function hvncat(dim::Int, dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; new_dim_keys=(1, 2))
     shifted_keys1 = map(key -> _shift_key(key, zero(dictionary1.dims), dim, new_dim_keys[1]), keys(dictionary1))
     shifted_keys2 = map(key -> _shift_key(key, dictionary1.dims, dim, new_dim_keys[2]), keys(dictionary2))
@@ -249,10 +270,20 @@ module MultiDimDictionaries
     return hvncat(2, dictionary1, dictionary2; new_dim_keys=new_dim_keys)
   end
 
+  # TODO: define `disjoint_union(dictionaries...; dim::Int, new_dim_keys)` to do a disjoint union
+  # of a number of dictionaries.
+  function disjoint_union(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; dim::Int=0, new_dim_keys=(1, 2))
+    return hvncat(dim, dictionary1, dictionary2; new_dim_keys)
+  end
+
+  function ⊔(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; kwargs...)
+    return disjoint_union(dictionary1, dictionary2; kwargs...)
+  end
+
   #
   # exports
   #
 
-  export MultiDimDictionary, LinearIndex
+  export MultiDimDictionary, LinearIndex, disjoint_union, ⊔
 
 end

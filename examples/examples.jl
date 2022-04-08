@@ -44,23 +44,18 @@ delete!(d, (1, 1))
 
 delete!(d, 1, 2)
 
-# Broken for now
-## @show !haskey(d, 1, 1)
-## @show !haskey(d, 1, 2)
-## @show haskey(d, 2, 1)
-## @show haskey(d, 2, 2)
-
-@show !haskey(d, (1, 1))
-@show !haskey(d, (1, 2))
-@show haskey(d, (2, 1))
-@show haskey(d, (2, 2))
+@show !haskey(d, 1, 1)
+@show !haskey(d, 1, 2)
+@show haskey(d, 2, 1)
+@show haskey(d, 2, 2)
 
 d2 = MultiDimDictionary([(3, 2), (2, 3)], [32, 23])
 d12 = merge(d, d2)
 
 @show d12 isa MultiDimDictionary
-@show haskey(d12, (1, 2))
-@show haskey(d12, (3, 2))
+@show !haskey(d12, 1, 2)
+@show haskey(d12, 2, 1)
+@show haskey(d12, 3, 2)
 
 d1 = MultiDimDictionary()
 d1[1] = 1
@@ -117,3 +112,17 @@ dh_Z = dh[:, "Z"]
 @show !isassigned(dh_Z, 2, "X")
 @show !isassigned(dh_Z, 1, "Y")
 @show !isassigned(dh_Z, 2, "Y")
+
+d = d1 ⊔ d2
+
+@show d[1, 1] == 1
+@show d[1, 2] == 2
+@show d[2, 1] == 3
+@show d[2, 2] == 4
+
+d = disjoint_union(d1, d2; new_dim_keys=("X", "Y"))
+
+@show d["X", 1] == 1
+@show d["X", 2] == 2
+@show d["Y", 1] == 3
+@show d["Y", 2] == 4
