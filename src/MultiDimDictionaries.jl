@@ -201,17 +201,36 @@ module MultiDimDictionaries
     return index[keep_dims]
   end
 
-  function getindex(::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple) where {I<:Tuple}
+  function slice_indices_no_dropdims(::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple) where {I<:Tuple}
     indices = Indices{I}()
+    for index in keys(dictionary)
+      if index_in_slice(index, index_slice)
+        insert!(indices, index)
+      end
+    end
+    return indices
+  end
+
+  function slice_indices(::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple) where {I<:Tuple}
     sliced_indices = Indices{Tuple}()
     for index in keys(dictionary)
       if index_in_slice(index, index_slice)
         sliced_index = slice_index(index, index_slice)
-        insert!(indices, index)
         insert!(sliced_indices, sliced_index)
       end
     end
+    return sliced_indices
+  end
+
+  function getindex(index_type::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple) where {I<:Tuple}
+    indices = slice_indices_no_dropdims(index_type, dictionary, index_slice)
+    sliced_indices = slice_indices(index_type, dictionary, index_slice)
     return MultiDimDictionary(sliced_indices, getindices(dictionary.dictionary, indices))
+  end
+
+  function getindex_no_dropdims(index_type::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple) where {I<:Tuple}
+    indices = slice_indices_no_dropdims(index_type, dictionary, index_slice)
+    return MultiDimDictionary(indices, getindices(dictionary.dictionary, indices))
   end
 
   # Special version for `dictionary[[("X", 1), ("X", 2)]]`
