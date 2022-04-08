@@ -95,15 +95,19 @@ module MultiDimDictionaries
   index_type(i1, i...) = any(x -> index_type(x) isa SliceIndex, (i1, i...)) ? SliceIndex() : ElementIndex()
 
   function getindex(dictionary::MultiDimDictionary, index::Tuple)
-    return getindex(dictionary.dictionary, index)
-  end
-
-  function getindex(::ElementIndex, dictionary::MultiDimDictionary, i...)
-    return getindex(dictionary.dictionary, (i...,))
+    return getindex(index_type(index...), dictionary, index)
   end
 
   function getindex(dictionary::MultiDimDictionary, i...)
-    return getindex(index_type(i...), dictionary, i...)
+    return getindex(dictionary, tuple(i...))
+  end
+
+  function getindex(::ElementIndex, dictionary::MultiDimDictionary, index::Tuple)
+    return getindex(dictionary.dictionary, index)
+  end
+
+  function getindex(index_type::ElementIndex, dictionary::MultiDimDictionary, i...)
+    return getindex(index_type, dictionary, tuple(i...))
   end
 
   function getindex(dictionary::MultiDimDictionary, index::LinearIndex)
@@ -176,14 +180,18 @@ module MultiDimDictionaries
     return true
   end
 
-  function getindex(::SliceIndex, dictionary::MultiDimDictionary{I,T}, i...) where {I,T}
+  function getindex(::SliceIndex, dictionary::MultiDimDictionary{I}, index::Tuple) where {I<:Tuple}
     indices = Indices{I}()
     for key in keys(dictionary)
-      if index_in_slice(key, (i...,))
+      if index_in_slice(key, index)
         insert!(indices, key)
       end
     end
     return MultiDimDictionary(getindices(dictionary.dictionary, indices))
+  end
+
+  function getindex(index_type::SliceIndex, dictionary::MultiDimDictionary, indices...)
+    return getindex(index_type, dictionary, tuple(indices...))
   end
 
   #
