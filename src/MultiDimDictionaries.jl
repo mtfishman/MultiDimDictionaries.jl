@@ -2,13 +2,10 @@ module MultiDimDictionaries
   using Reexport
   @reexport using Dictionaries
 
-  export CartesianKey, LinearIndex
-
-  import Base: keys, getindex, get, isassigned, setindex!, insert!, delete!, length, show, Tuple, eltype, ==, similar, vcat, hcat, hvncat
+  import Base: convert, keys, getindex, get, isassigned, setindex!, insert!, delete!, length, show, Tuple, eltype, ==, similar, vcat, hcat, hvncat
   import Dictionaries: issettable, isinsertable, gettokenvalue, merge
 
   include("linearindex.jl")
-  include("cartesiankey.jl")
 
   _isless(n1::Integer, n2::Integer) = (n1 < n2)
   _isless(n1, n2) = false
@@ -40,38 +37,32 @@ module MultiDimDictionaries
     return dims
   end
 
+  struct Private end
+
   # TODO: implement slicing with a `to_keys` generalization of `to_indices`.
-  struct MultiDimDictionary{I<:CartesianKey,T,N} <: AbstractDictionary{I,T}
+  struct MultiDimDictionary{I<:Tuple,T,N} <: AbstractDictionary{I,T}
     dictionary::Dictionary{I,T}
     dims::Vector{Int}
-    function MultiDimDictionary{I,T}(dictionary::Dictionary, dims::Vector{Int}) where {I,T}
+    function MultiDimDictionary{I,T}(::Private, dictionary::Dictionary, dims::Vector{Int}) where {I<:Tuple,T}
       N = max_key_length(dictionary)
       @assert N == length(dims)
       return new{I,T,N}(dictionary, dims)
     end
   end
 
-  # Automatically determine the dimensions
-  function MultiDimDictionary{I,T}(dictionary::Dictionary) where {I<:CartesianKey,T}
-    return MultiDimDictionary{I,T}(dictionary, default_dims(dictionary))
+  function MultiDimDictionary{I,T}(dictionary::Dictionary; dims=default_dims(dictionary)) where {I<:Tuple,T}
+    return MultiDimDictionary{I,T}(Private(), dictionary, dims)
   end
 
-  function MultiDimDictionary{I}(dictionary::Dictionary{<:Any,T}) where {I,T}
-    return MultiDimDictionary{I,T}(dictionary)
+  function MultiDimDictionary{I}(dictionary::Dictionary; kwargs...) where {I}
+    return MultiDimDictionary{I,eltype(dictionary)}(dictionary; kwargs...)
   end
 
-  function MultiDimDictionary{I}(dictionary::Dictionary{<:Any,T}, dims) where {I,T}
-    return MultiDimDictionary{I,T}(dictionary, dims)
+  function MultiDimDictionary(dictionary::Dictionary{I,T}; kwargs...) where {I,T}
+    return MultiDimDictionary{I,T}(dictionary; kwargs...)
   end
 
-  function MultiDimDictionary(dictionary::Dictionary{I,T}, dims) where {I,T}
-    return MultiDimDictionary{I,T}(dictionary, dims)
-  end
-
-  function MultiDimDictionary(dictionary::Dictionary{I,T}) where {I,T}
-    return MultiDimDictionary{I,T}(dictionary)
-  end
-  MultiDimDictionary{I,T}() where {I,T} = MultiDimDictionary{I,T}(Dictionary{I,T}())
+  MultiDimDictionary{I,T}(; kwargs...) where {I,T} = MultiDimDictionary{I,T}(Dictionary{I,T}(); kwargs...)
 
   MultiDimDictionary(indexable) = MultiDimDictionary(Dictionary(indexable))
   MultiDimDictionary{I}(indexable) where {I} = MultiDimDictionary{I}(Dictionary(indexable))
@@ -81,7 +72,7 @@ module MultiDimDictionaries
   MultiDimDictionary{I}(inds, values) where {I} = MultiDimDictionary{I}(Dictionary(inds, values))
   MultiDimDictionary{I,T}(inds, values) where {I,T} = MultiDimDictionary{I,T}(Dictionary(inds, values))
 
-  MultiDimDictionary() = MultiDimDictionary(Dictionary{CartesianKey}())
+  MultiDimDictionary() = MultiDimDictionary(Dictionary{Tuple}())
 
   multidimdictionary(iter) = MultiDimDictionary(dictionary(iter))
 
@@ -103,65 +94,64 @@ module MultiDimDictionaries
   # For multi-index, check if any are SliceIndex
   index_type(i1, i...) = any(x -> index_type(x) isa SliceIndex, (i1, i...)) ? SliceIndex() : ElementIndex()
 
-  function getindex(dictionary::MultiDimDictionary{I,T}, index::I)::T where {I,T}
+  function getindex(dictionary::MultiDimDictionary, index::Tuple)
     return getindex(dictionary.dictionary, index)
   end
 
-  function getindex(::ElementIndex, dictionary::MultiDimDictionary{I,T}, i...)::T where {I,T}
-    return getindex(dictionary.dictionary, CartesianKey(i...))
+  function getindex(::ElementIndex, dictionary::MultiDimDictionary, i...)
+    return getindex(dictionary.dictionary, (i...,))
   end
 
-  function getindex(dictionary::MultiDimDictionary{I,T}, i...) where {I,T}
+  function getindex(dictionary::MultiDimDictionary, i...)
     return getindex(index_type(i...), dictionary, i...)
   end
 
-  function getindex(dictionary::MultiDimDictionary{I,T}, index::LinearIndex)::T where {I,T}
+  function getindex(dictionary::MultiDimDictionary, index::LinearIndex)
     return getindex(dictionary.dictionary.values, index.I)
   end
 
-  isassigned(dictionary::MultiDimDictionary{I}, i::I) where {I<:CartesianKey} = isassigned(dictionary.dictionary, i)
-  isassigned(dictionary::MultiDimDictionary, i...) = isassigned(dictionary, CartesianKey(i...))
+  isassigned(dictionary::MultiDimDictionary, index::Tuple) = isassigned(dictionary.dictionary, index)
+  isassigned(dictionary::MultiDimDictionary, i...) = isassigned(dictionary, (i...,))
 
   issetable(dictionary::MultiDimDictionary) = issetable(dictionary.dictionary)
 
-  function _setindex!(dictionary::MultiDimDictionary, value, index)
+  function setindex!(dictionary::MultiDimDictionary{I,T}, value::T, index::I) where {I<:Tuple,T}
     expand_dims!(dictionary.dims, index)
     set!(dictionary.dictionary, index, value)
     return dictionary
   end
 
-  function setindex!(dictionary::MultiDimDictionary{I,T}, value::T, index::I) where {I,T}
-    return _setindex!(dictionary, value, index)
-    return dictionary
+  function setindex!(dictionary::MultiDimDictionary{I,T}, value, index::Tuple) where {I,T}
+    return setindex!(dictionary, convert(T, value), convert(I, index))
   end
 
-  function setindex!(dictionary::MultiDimDictionary{I,T}, value, index::I) where {I,T}
-    return _setindex!(dictionary, value, index)
+  function setindex!(dictionary::MultiDimDictionary, value, i...)
+    return setindex!(dictionary, value, tuple(i...))
   end
 
-  function setindex!(dictionary::MultiDimDictionary{I,T}, value::T, i...) where {I,T}
-    return _setindex!(dictionary, value, CartesianKey(i...))
-  end
-
-  function setindex!(dictionary::MultiDimDictionary{I,T}, value, i...) where {I,T}
-    return _setindex!(dictionary, value, CartesianKey(i...))
-  end
-
-  function setindex!(dictionary::MultiDimDictionary{I,T}, value::T, index::LinearIndex) where {I,T}
+  function setindex!(dictionary::MultiDimDictionary, value, index::LinearIndex)
     setindex!(dictionary.dictionary.values, value, index.I)
     return dictionary
   end
 
   isinsertable(dictionary::MultiDimDictionary) = isinsertable(dictionary.dictionary)
 
-  function insert!(dictionary::MultiDimDictionary{I,T}, index::I, value::T) where {I,T}
+  function insert!(dictionary::MultiDimDictionary{I,T}, index::I, value::T) where {I<:Tuple,T}
     insert!(dictionary.dictionary, index, value)
     return dictionary
   end
 
-  function delete!(dictionary::MultiDimDictionary{I,T}, index::I) where {I,T}
+  function insert!(dictionary::MultiDimDictionary{I,T}, index::Tuple, value) where {I,T}
+    return insert!(dictionary, convert(I, index), convert(T, value))
+  end
+
+  function delete!(dictionary::MultiDimDictionary, index::Tuple)
     delete!(dictionary.dictionary, index)
     return dictionary
+  end
+
+  function delete!(dictionary::MultiDimDictionary, i...)
+    return delete!(dictionary, tuple(i...))
   end
 
   #
@@ -176,7 +166,7 @@ module MultiDimDictionaries
     return index == slice
   end
 
-  function index_in_slice(index::CartesianKey, slice::Tuple)
+  function index_in_slice(index::Tuple, slice::Tuple)
     for n in 1:length(index)
       !index_in_slice(index[n], slice[n]) && return false
     end
@@ -206,7 +196,7 @@ module MultiDimDictionaries
 
   function merge(dictionary1::MultiDimDictionary{I,T}, dictionary2::MultiDimDictionary{I,T}) where {I,T}
     dims = max.(dictionary1.dims, dictionary2.dims)
-    return MultiDimDictionary(merge(dictionary1.dictionary, dictionary2.dictionary), dims)
+    return MultiDimDictionary(merge(dictionary1.dictionary, dictionary2.dictionary); dims)
   end
 
   _add(n1::Integer, n2::Integer) = n1 + n2
@@ -221,18 +211,18 @@ module MultiDimDictionaries
   #
   # f = x -> x + 3
   #
-  # _shift_key(CartesianKey(2, 2, 2), (f, f, f), 2) -> CartesianKey(2, 5, 2)
+  # _shift_key(Tuple(2, 2, 2), (f, f, f), 2) -> Tuple(2, 5, 2)
   #
-  # _shift_key(CartesianKey(2, 2, 2), (f, f, f), 3) -> CartesianKey(2, 2, 5)
+  # _shift_key(Tuple(2, 2, 2), (f, f, f), 3) -> Tuple(2, 2, 5)
   #
-  # _shift_key(CartesianKey(2, 2, 2), (f, f, f), 4) -> CartesianKey(2, 2, 2, 1)
+  # _shift_key(Tuple(2, 2, 2), (f, f, f), 4) -> Tuple(2, 2, 2, 1)
   #
-  # _shift_key(CartesianKey(2, 2, 2), (f, f, f), 4, "X") -> CartesianKey(2, 2, 2, "X")
-  function _shift_key(key::CartesianKey, dims, dim::Int, dim_key=1)
+  # _shift_key(Tuple(2, 2, 2), (f, f, f), 4, "X") -> Tuple(2, 2, 2, "X")
+  function _shift_key(key::Tuple, dims, dim::Int, dim_key=1)
     if dim > length(key)
-      return CartesianKey(ntuple(j -> j == dim ? dim_key : (j > length(key) ? 1 : key[j]), dim)...)
+      return ntuple(j -> j == dim ? dim_key : (j > length(key) ? 1 : key[j]), dim)
     end
-    return CartesianKey(ntuple(j -> j == dim ? _add(dims[dim], key[dim]) : key[j], length(key))...)
+    return ntuple(j -> j == dim ? _add(dims[dim], key[dim]) : key[j], length(key))
   end
 
   function hvncat(dim::Int, dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; new_dim_keys=(1, 2))
@@ -243,8 +233,8 @@ module MultiDimDictionaries
     ## narrowed_keytype1 = mapreduce(typeof, promote_type, shifted_keys1)
     ## narrowed_keytype2 = mapreduce(typeof, promote_type, shifted_keys2)
 
-    narrowed_keytype1 = CartesianKey
-    narrowed_keytype2 = CartesianKey
+    narrowed_keytype1 = Tuple
+    narrowed_keytype2 = Tuple
 
     shifted_dictionary1 = MultiDimDictionary{narrowed_keytype1}(shifted_keys1, values(dictionary1))
     shifted_dictionary2 = MultiDimDictionary{narrowed_keytype2}(shifted_keys2, values(dictionary2))
@@ -263,6 +253,6 @@ module MultiDimDictionaries
   # exports
   #
 
-  export MultiDimDictionary
+  export MultiDimDictionary, LinearIndex
 
 end
