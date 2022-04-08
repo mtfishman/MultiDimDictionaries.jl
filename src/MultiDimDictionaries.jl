@@ -45,9 +45,13 @@ module MultiDimDictionaries
     dims::Vector{Int}
     function MultiDimDictionary{I,T}(::Private, dictionary::Dictionary, dims::Vector{Int}) where {I<:Tuple,T}
       N = max_key_length(dictionary)
-      @assert N == length(dims)
+      @assert length(dims) ≥ N
       return new{I,T,N}(dictionary, dims)
     end
+  end
+
+  function MultiDimDictionary{I,T}(::Private, dictionary::Dictionary, dims) where {I<:Tuple,T}
+    return MultiDimDictionary{I,T}(Private(), dictionary, collect(dims))
   end
 
   function MultiDimDictionary{I,T}(dictionary::Dictionary; dims=default_dims(dictionary)) where {I<:Tuple,T}
@@ -72,7 +76,7 @@ module MultiDimDictionaries
   MultiDimDictionary{I}(inds, values) where {I} = MultiDimDictionary{I}(Dictionary(inds, values))
   MultiDimDictionary{I,T}(inds, values) where {I,T} = MultiDimDictionary{I,T}(Dictionary(inds, values))
 
-  MultiDimDictionary() = MultiDimDictionary(Dictionary{Tuple}())
+  MultiDimDictionary(; kwargs...) = MultiDimDictionary(Dictionary{Tuple}(); kwargs...)
 
   multidimdictionary(iter) = MultiDimDictionary(dictionary(iter))
 
@@ -173,14 +177,45 @@ module MultiDimDictionaries
     return index == slice
   end
 
-  function index_in_slice(index::Tuple, slice::Tuple)
-    for n in 1:length(index)
-      !index_in_slice(index[n], slice[n]) && return false
+  # This makes `dictionary["X", :]` work for any
+  # lengths of keys.
+  function has_trailing_colon(dim::Int, index_slice::Tuple)
+    return dim > length(index_slice) && last(index_slice) isa Colon
+  end
+
+  function index_in_slice(index::Tuple, index_slice::Tuple)
+    for dim in eachindex(index_slice)
+      has_trailing_colon(dim, index_slice) && return true
+      !index_in_slice(index[dim], index_slice[dim]) && return false
     end
     return true
   end
 
-  function getindex(::SliceIndex, dictionary::MultiDimDictionary{I}, index::Tuple) where {I<:Tuple}
+  function slice_index(index::Tuple, index_slice::Tuple)
+    keep_dims = Int[]
+    for dim in eachindex(index)
+      if has_trailing_colon(dim, index_slice) || index_type(index_slice[dim]) isa SliceIndex
+        push!(keep_dims, dim)
+      end
+    end
+    return index[keep_dims]
+  end
+
+  function getindex(::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple) where {I<:Tuple}
+    indices = Indices{I}()
+    sliced_indices = Indices{Tuple}()
+    for index in keys(dictionary)
+      if index_in_slice(index, index_slice)
+        sliced_index = slice_index(index, index_slice)
+        insert!(indices, index)
+        insert!(sliced_indices, sliced_index)
+      end
+    end
+    return MultiDimDictionary(sliced_indices, getindices(dictionary.dictionary, indices))
+  end
+
+  # Special version for `dictionary[[("X", 1), ("X", 2)]]`
+  function getindex(dictionary::MultiDimDictionary{I}, index::Vector) where {I<:Tuple}
     indices = Indices{I}()
     for key in keys(dictionary)
       if index_in_slice(key, index)
