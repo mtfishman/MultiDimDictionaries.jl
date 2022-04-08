@@ -262,18 +262,18 @@ module MultiDimDictionaries
     return merge(shifted_dictionary1, shifted_dictionary2)
   end
 
-  function vcat(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; new_dim_keys=(1, 2))
-    return hvncat(1, dictionary1, dictionary2; new_dim_keys=new_dim_keys)
+  function vcat(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; kwargs...)
+    return hvncat(1, dictionary1, dictionary2; kwargs...)
   end
 
-  function hcat(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; new_dim_keys=(1, 2))
-    return hvncat(2, dictionary1, dictionary2; new_dim_keys=new_dim_keys)
+  function hcat(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; kwargs...)
+    return hvncat(2, dictionary1, dictionary2; kwargs...)
   end
 
   # TODO: define `disjoint_union(dictionaries...; dim::Int, new_dim_keys)` to do a disjoint union
   # of a number of dictionaries.
-  function disjoint_union(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; dim::Int=0, new_dim_keys=(1, 2))
-    return hvncat(dim, dictionary1, dictionary2; new_dim_keys)
+  function disjoint_union(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; dim::Int=0, kwargs...)
+    return hvncat(dim, dictionary1, dictionary2; kwargs...)
   end
 
   function ⊔(dictionary1::MultiDimDictionary, dictionary2::MultiDimDictionary; kwargs...)
