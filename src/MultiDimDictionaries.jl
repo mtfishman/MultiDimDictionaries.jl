@@ -3,7 +3,7 @@ module MultiDimDictionaries
   @reexport using Dictionaries
 
   import Base: convert, keys, getindex, get, isassigned, setindex!, insert!, delete!, length, show, Tuple, eltype, ==, similar, vcat, hcat, hvncat
-  import Dictionaries: issettable, isinsertable, gettokenvalue, merge, haskey
+  import Dictionaries: issettable, istokenizable, isinsertable, gettokenvalue, gettoken!, merge, haskey, settokenvalue!
 
   include("linearindex.jl")
 
@@ -83,6 +83,7 @@ module MultiDimDictionaries
   keys(dictionary::MultiDimDictionary) = keys(dictionary.dictionary)
 
   gettokenvalue(dictionary::MultiDimDictionary, token) = gettokenvalue(dictionary.dictionary, token)
+  gettoken!(dictionary::MultiDimDictionary{I}, token::I) where {I} = gettoken!(dictionary.dictionary, token)
 
   # Trait distinguishing if an index is a slice or just an element
   struct SliceIndex end
@@ -124,7 +125,7 @@ module MultiDimDictionaries
   haskey(dictionary::MultiDimDictionary, index::Tuple) = haskey(dictionary.dictionary, index)
   haskey(dictionary::MultiDimDictionary, i...) = haskey(dictionary, (i...,))
 
-  issetable(dictionary::MultiDimDictionary) = issetable(dictionary.dictionary)
+  issettable(dictionary::MultiDimDictionary) = issettable(dictionary.dictionary)
 
   function setindex!(dictionary::MultiDimDictionary{I,T}, value::T, index::I) where {I<:Tuple,T}
     expand_dims!(dictionary.dims, index)
@@ -146,6 +147,10 @@ module MultiDimDictionaries
   end
 
   isinsertable(dictionary::MultiDimDictionary) = isinsertable(dictionary.dictionary)
+  istokenizable(dictionary::MultiDimDictionary) = istokenizable(dictionary.dictionary)
+  function settokenvalue!(dictionary::MultiDimDictionary{<:Any,T}, i, value::T) where {T}
+    return settokenvalue!(dictionary.dictionary, i, value)
+  end
 
   function insert!(dictionary::MultiDimDictionary{I,T}, index::I, value::T) where {I<:Tuple,T}
     insert!(dictionary.dictionary, index, value)
