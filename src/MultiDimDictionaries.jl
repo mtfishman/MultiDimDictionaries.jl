@@ -5,6 +5,7 @@ module MultiDimDictionaries
   import Base: convert, keys, getindex, get, isassigned, setindex!, insert!, delete!, length, show, Tuple, eltype, ==, similar, vcat, hcat, hvncat
   import Dictionaries: issettable, istokenizable, isinsertable, gettokenvalue, gettoken!, merge, haskey, settokenvalue!
 
+  include("tuple_convert.jl")
   include("linearindex.jl")
 
   _isless(n1::Integer, n2::Integer) = (n1 < n2)
