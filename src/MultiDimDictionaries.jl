@@ -4,6 +4,7 @@ using Reexport
 
 import Base:
   convert,
+  copy,
   keys,
   getindex,
   get,
@@ -76,6 +77,10 @@ struct MultiDimDictionary{I<:Tuple,T,N} <: AbstractDictionary{I,T}
     @assert length(dims) ≥ N
     return new{I,T,N}(dictionary, dims)
   end
+end
+
+function copy(dictionary::MultiDimDictionary{I,T}) where {I,T}
+  return MultiDimDictionary{I,T}(Private(), dictionary.dictionary, dictionary.dims)
 end
 
 function MultiDimDictionary{I,T}(::Private, dictionary::Dictionary, dims) where {I<:Tuple,T}
