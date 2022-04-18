@@ -94,17 +94,15 @@ dh = hcat(d1, d2; new_dim_keys=("X", "Y"))
 
 dh_X = dh[:, "X"]
 
-@show dh_X[1] == 1
-@show dh_X[2] == 2
+@show dh_X[1, "X"] == 1
+@show dh_X[2, "X"] == 2
 @show !isassigned(dh_X, 1, "X")
 @show !isassigned(dh_X, 2, "X")
 
 dh_Y = dh[:, "Y"]
 
-@show dh_Y[1] == 3
-@show dh_Y[2] == 4
-@show !isassigned(dh_Y, 1, "Y")
-@show !isassigned(dh_Y, 2, "Y")
+@show dh_Y[1, "Y"] == 3
+@show dh_Y[2, "Y"] == 4
 
 dh_Z = dh[:, "Z"]
 
@@ -136,7 +134,7 @@ d_slice = d[[("X", 1), ("Y", 2)]]
 
 d2 = (d ⊔ d)[1, :]
 
-@show d2["X", 1] == 1
-@show d2["X", 2] == 2
-@show d2["Y", 1] == 3
-@show d2["Y", 2] == 4
+@show d2[1, "X", 1] == 1
+@show d2[1, "X", 2] == 2
+@show d2[1, "Y", 1] == 3
+@show d2[1, "Y", 2] == 4
