@@ -29,7 +29,8 @@ import Dictionaries:
   gettoken!,
   merge,
   haskey,
-  settokenvalue!
+  settokenvalue!,
+  set!
 
 include("tuple_convert.jl")
 include("linearindex.jl")
@@ -67,20 +68,21 @@ end
 struct Private end
 
 # TODO: implement slicing with a `to_keys` generalization of `to_indices`.
-struct MultiDimDictionary{I<:Tuple,T,N} <: AbstractDictionary{I,T}
+struct MultiDimDictionary{I<:Tuple,T} <: AbstractDictionary{I,T}
   dictionary::Dictionary{I,T}
   dims::Vector{Int}
   function MultiDimDictionary{I,T}(
     ::Private, dictionary::Dictionary, dims::Vector{Int}
   ) where {I<:Tuple,T}
-    N = max_key_length(dictionary)
-    @assert length(dims) ≥ N
-    return new{I,T,N}(dictionary, dims)
+    @assert all(dims .≥ default_dims(dictionary))
+    return new{I,T}(dictionary, dims)
   end
 end
 
 function copy(dictionary::MultiDimDictionary{I,T}) where {I,T}
-  return MultiDimDictionary{I,T}(Private(), dictionary.dictionary, dictionary.dims)
+  return MultiDimDictionary{I,T}(
+    Private(), copy(dictionary.dictionary), copy(dictionary.dims)
+  )
 end
 
 function MultiDimDictionary{I,T}(::Private, dictionary::Dictionary, dims) where {I<:Tuple,T}
@@ -194,7 +196,18 @@ function setindex!(dictionary::MultiDimDictionary, value, i...)
   return setindex!(dictionary, value, tuple(i...))
 end
 
+function set!(dictionary::MultiDimDictionary{I,T}, index::I, value::T) where {I<:Tuple,T}
+  expand_dims!(dictionary.dims, index)
+  set!(dictionary.dictionary, index, value)
+  return dictionary
+end
+
+function set!(dictionary::MultiDimDictionary{I,T}, index::Tuple, value) where {I,T}
+  return set!(dictionary, convert(I, index), convert(T, value))
+end
+
 function setindex!(dictionary::MultiDimDictionary, value, index::LinearIndex)
+  # XXX: Expand dimensions
   setindex!(dictionary.dictionary.values, value, index.I)
   return dictionary
 end
