@@ -135,23 +135,25 @@ function gettoken!(dictionary::MultiDimDictionary{I}, token::I) where {I}
 end
 
 # Trait distinguishing if an index is a slice or just an element
-struct SliceIndex end
-struct ElementIndex end
+abstract type IndexType end
+
+struct SliceIndex <: IndexType end
+struct ElementIndex <: IndexType end
 
 # In general assume just an index
-index_type(::Any) = ElementIndex()
+IndexType(::Any) = ElementIndex()
 
-index_type(::Colon) = SliceIndex()
-index_type(::Vector) = SliceIndex()
-index_type(::AbstractRange) = SliceIndex()
+IndexType(::Colon) = SliceIndex()
+IndexType(::Vector) = SliceIndex()
+IndexType(::AbstractRange) = SliceIndex()
 
 # For multi-index, check if any are SliceIndex
-function index_type(i1, i...)
-  return any(x -> index_type(x) isa SliceIndex, (i1, i...)) ? SliceIndex() : ElementIndex()
+function IndexType(i1, i...)
+  return any(x -> IndexType(x) isa SliceIndex, (i1, i...)) ? SliceIndex() : ElementIndex()
 end
 
 function getindex(dictionary::MultiDimDictionary, index::Tuple)
-  return getindex(index_type(index...), dictionary, index)
+  return getindex(IndexType(index...), dictionary, index)
 end
 
 function getindex(dictionary::MultiDimDictionary, i...)
@@ -162,8 +164,8 @@ function getindex(::ElementIndex, dictionary::MultiDimDictionary, index::Tuple)
   return getindex(dictionary.dictionary, index)
 end
 
-function getindex(index_type::ElementIndex, dictionary::MultiDimDictionary, i...)
-  return getindex(index_type, dictionary, tuple(i...))
+function getindex(::ElementIndex, dictionary::MultiDimDictionary, i...)
+  return getindex(ElementIndex(), dictionary, tuple(i...))
 end
 
 function getindex(dictionary::MultiDimDictionary, index::LinearIndex)
@@ -266,7 +268,7 @@ end
 function slice_index(index::Tuple, index_slice::Tuple)
   keep_dims = Int[]
   for dim in eachindex(index)
-    if has_trailing_colon(dim, index_slice) || index_type(index_slice[dim]) isa SliceIndex
+    if has_trailing_colon(dim, index_slice) || IndexType(index_slice[dim]) isa SliceIndex
       push!(keep_dims, dim)
     end
   end
@@ -288,10 +290,10 @@ function slice_indices(
 end
 
 function getindex_dropdims(
-  index_type::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple
+  ::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple
 ) where {I<:Tuple}
-  indices = slice_indices_no_dropdims(index_type, dictionary, index_slice)
-  sliced_indices = slice_indices(index_type, dictionary, index_slice)
+  indices = slice_indices_no_dropdims(SliceIndex(), dictionary, index_slice)
+  sliced_indices = slice_indices(SliceIndex(), dictionary, index_slice)
   return MultiDimDictionary(sliced_indices, getindices(dictionary.dictionary, indices))
 end
 
@@ -309,9 +311,9 @@ function slice_indices_no_dropdims(
 end
 
 function getindex(
-  index_type::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple
+  ::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple
 ) where {I<:Tuple}
-  indices = slice_indices_no_dropdims(index_type, dictionary, index_slice)
+  indices = slice_indices_no_dropdims(SliceIndex(), dictionary, index_slice)
   return MultiDimDictionary(indices, getindices(dictionary.dictionary, indices))
 end
 
@@ -326,8 +328,8 @@ function getindex(dictionary::MultiDimDictionary{I}, index::Vector) where {I<:Tu
   return MultiDimDictionary(getindices(dictionary.dictionary, indices))
 end
 
-function getindex(index_type::SliceIndex, dictionary::MultiDimDictionary, indices...)
-  return getindex(index_type, dictionary, tuple(indices...))
+function getindex(::SliceIndex, dictionary::MultiDimDictionary, indices...)
+  return getindex(SliceIndex(), dictionary, tuple(indices...))
 end
 
 #
