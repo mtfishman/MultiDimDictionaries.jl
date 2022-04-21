@@ -314,7 +314,10 @@ function getindex(
   ::SliceIndex, dictionary::MultiDimDictionary{I}, index_slice::Tuple
 ) where {I<:Tuple}
   indices = slice_indices_no_dropdims(SliceIndex(), dictionary, index_slice)
-  return MultiDimDictionary(indices, getindices(dictionary.dictionary, indices))
+  # Need convert because of:
+  # https://github.com/andyferris/Dictionaries.jl/issues/97
+  subdictionary = convert(typeof(dictionary.dictionary), getindices(dictionary.dictionary, indices))
+  return MultiDimDictionary(indices, subdictionary)
 end
 
 # Special version for `dictionary[[("X", 1), ("X", 2)]]`
@@ -325,7 +328,8 @@ function getindex(dictionary::MultiDimDictionary{I}, index::Vector) where {I<:Tu
       insert!(indices, key)
     end
   end
-  return MultiDimDictionary(getindices(dictionary.dictionary, indices))
+  subdictionary = convert(typeof(dictionary.dictionary), getindices(dictionary.dictionary, indices))
+  return MultiDimDictionary(subdictionary)
 end
 
 function getindex(::SliceIndex, dictionary::MultiDimDictionary, indices...)
