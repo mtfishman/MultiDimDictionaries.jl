@@ -104,7 +104,8 @@ function MultiDimDictionary(dictionary::Dictionary{I,T}; kwargs...) where {I<:Tu
 end
 
 function MultiDimDictionary(dictionary::Dictionary{I,T}; kwargs...) where {I,T}
-  return MultiDimDictionary(convert(Dictionary{Tuple,T}, dictionary); kwargs...)
+  d = Dictionary{Tuple,T}(tuple_convert.(keys(dictionary)), dictionary)
+  return MultiDimDictionary(d; kwargs...)
 end
 
 function MultiDimDictionary{I,T}(; kwargs...) where {I<:Tuple,T}
