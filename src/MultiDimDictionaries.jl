@@ -95,30 +95,38 @@ function MultiDimDictionary{I,T}(
   return MultiDimDictionary{I,T}(Private(), dictionary, dims)
 end
 
-function MultiDimDictionary{I}(dictionary::Dictionary; kwargs...) where {I}
+function MultiDimDictionary{I}(dictionary::Dictionary; kwargs...) where {I<:Tuple}
   return MultiDimDictionary{I,eltype(dictionary)}(dictionary; kwargs...)
 end
 
-function MultiDimDictionary(dictionary::Dictionary{I,T}; kwargs...) where {I,T}
+function MultiDimDictionary(dictionary::Dictionary{I,T}; kwargs...) where {I<:Tuple,T}
   return MultiDimDictionary{I,T}(dictionary; kwargs...)
 end
 
-function MultiDimDictionary{I,T}(; kwargs...) where {I,T}
+function MultiDimDictionary(dictionary::Dictionary{I,T}; kwargs...) where {I,T}
+  return MultiDimDictionary(convert(Dictionary{Tuple,T}, dictionary); kwargs...)
+end
+
+function MultiDimDictionary{I,T}(; kwargs...) where {I<:Tuple,T}
   return MultiDimDictionary{I,T}(Dictionary{I,T}(); kwargs...)
 end
 
 MultiDimDictionary(indexable) = MultiDimDictionary(Dictionary(indexable))
-MultiDimDictionary{I}(indexable) where {I} = MultiDimDictionary{I}(Dictionary(indexable))
-function MultiDimDictionary{I,T}(indexable) where {I,T}
-  return MultiDimDictionary{I,T}(Dictionary(indexable))
+
+MultiDimDictionary{I}(indexable) where {I<:Tuple} = MultiDimDictionary{I}(Dictionary(indexable))
+
+function MultiDimDictionary{I,T}(indexable) where {I<:Tuple,T}
+  return MultiDimDictionary{I,T}(Dictionary{I,T}(indexable))
 end
 
 MultiDimDictionary(inds, values) = MultiDimDictionary(Dictionary(inds, values))
-function MultiDimDictionary{I}(inds, values) where {I}
-  return MultiDimDictionary{I}(Dictionary(inds, values))
+
+function MultiDimDictionary{I}(inds, values) where {I<:Tuple}
+  return MultiDimDictionary{I}(Dictionary{I}(inds, values))
 end
-function MultiDimDictionary{I,T}(inds, values) where {I,T}
-  return MultiDimDictionary{I,T}(Dictionary(inds, values))
+
+function MultiDimDictionary{I,T}(inds, values) where {I<:Tuple,T}
+  return MultiDimDictionary{I,T}(Dictionary{I,T}(inds, values))
 end
 
 MultiDimDictionary(; kwargs...) = MultiDimDictionary(Dictionary{Tuple}(); kwargs...)
