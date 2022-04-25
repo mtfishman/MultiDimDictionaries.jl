@@ -96,8 +96,8 @@ dh_X = dh[:, "X"]
 
 @show dh_X[1, "X"] == 1
 @show dh_X[2, "X"] == 2
-@show !isassigned(dh_X, 1, "X")
-@show !isassigned(dh_X, 2, "X")
+@show !isassigned(dh_X, 1, "Y")
+@show !isassigned(dh_X, 2, "Y")
 
 dh_Y = dh[:, "Y"]
 

@@ -43,7 +43,7 @@ function expand_dims!(dims, key)
   if length(dims) < N
     append!(dims, zeros(N - length(dims)))
   end
-  @assert length(dims) == N
+  @assert length(dims) ≥ N
   for n in 1:N
     if _isless(dims[n], key[n])
       dims[n] = key[n]
@@ -259,16 +259,24 @@ function index_in_slice(index, slice)
   return index == slice
 end
 
-# This makes `dictionary["X", :]` work for any
-# lengths of keys.
-function has_trailing_colon(dim::Int, index_slice::Tuple)
-  return dim > length(index_slice) && last(index_slice) isa Colon
-end
-
 function index_in_slice(index::Tuple, index_slice::Tuple)
-  for dim in eachindex(index_slice)
-    has_trailing_colon(dim, index_slice) && return true
-    !index_in_slice(index[dim], index_slice[dim]) && return false
+  if length(index) > length(index_slice)
+    # This makes keys like `("X", 1, 2)` get
+    # included in the indexing `dictionary["X", :]`.
+    if !isa(last(index_slice), Colon)
+      return false
+    end
+  elseif length(index) < length(index_slice)
+    # This makes keys like `("X", 1)` get
+    # included in the indexing `dictionary["X", 1, :]`.
+    if any(x -> !isa(x, Colon), index_slice[(length(index) + 1):end])
+      return false
+    end
+  end
+  for dim in 1:min(length(index), length(index_slice))
+    if !index_in_slice(index[dim], index_slice[dim])
+      return false
+    end
   end
   return true
 end
