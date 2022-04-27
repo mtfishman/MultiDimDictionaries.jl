@@ -75,7 +75,10 @@ struct MultiDimDictionary{I<:Tuple,T} <: AbstractDictionary{I,T}
   function MultiDimDictionary{I,T}(
     ::Private, dictionary::Dictionary, dims::Vector{Int}
   ) where {I<:Tuple,T}
-    @assert all(dims .≥ default_dims(dictionary))
+    # TODO: `dims` may be longer than `default_dims` if
+    # a key was removed. Should `dims` be adjusted
+    # when keys are removed?
+    # @assert all(dims .≥ default_dims(dictionary))
     return new{I,T}(dictionary, dims)
   end
 end
