@@ -22,6 +22,7 @@ import Base:
   hcat,
   hvncat
 import Dictionaries:
+  deletetoken!,
   issettable,
   istokenizable,
   isinsertable,
@@ -81,7 +82,7 @@ end
 
 function copy(dictionary::MultiDimDictionary{I,T}) where {I,T}
   return MultiDimDictionary{I,T}(
-    Private(), copy(dictionary.dictionary), copy(dictionary.dims)
+    Private(), deepcopy(dictionary.dictionary), copy(dictionary.dims)
   )
 end
 
@@ -245,6 +246,15 @@ end
 
 function delete!(dictionary::MultiDimDictionary, i...)
   return delete!(dictionary, tuple(i...))
+end
+
+function deletetoken!(dictionary::MultiDimDictionary, index::Tuple)
+  deletetoken!(dictionary.dictionary, index)
+  return dictionary
+end
+
+function deletetoken!(dictionary::MultiDimDictionary, i...)
+  return deletetoken!(dictionary, tuple(i...))
 end
 
 #
