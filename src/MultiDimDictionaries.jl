@@ -84,9 +84,10 @@ struct MultiDimDictionary{I<:Tuple,T} <: AbstractDictionary{I,T}
 end
 
 function copy(dictionary::MultiDimDictionary{I,T}) where {I,T}
-  return MultiDimDictionary{I,T}(
-    Private(), deepcopy(dictionary.dictionary), copy(dictionary.dims)
+  dictionary_copy = Dictionary(
+    copy(dictionary.dictionary.indices), copy(dictionary.dictionary.values)
   )
+  return MultiDimDictionary{I,T}(Private(), dictionary_copy, copy(dictionary.dims))
 end
 
 function MultiDimDictionary{I,T}(::Private, dictionary::Dictionary, dims) where {I<:Tuple,T}
@@ -390,7 +391,9 @@ end
 function merge(
   dictionary1::MultiDimDictionary{I,T}, dictionary2::MultiDimDictionary{I,T}
 ) where {I,T}
-  dims = max.(dictionary1.dims, dictionary2.dims)
+  d1 = dictionary1.dims
+  d2 = dictionary2.dims
+  dims = [max(get(d1, i, 0), get(d2, i, 0)) for i in 1:max(length(d1), length(d2))]
   return MultiDimDictionary(merge(dictionary1.dictionary, dictionary2.dictionary); dims)
 end
 
